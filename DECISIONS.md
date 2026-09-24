@@ -51,3 +51,14 @@ to manage — TanStack Query's own stated purpose in the contract is owning
 *server* state, and this app's state is entirely local UI state, which the
 contract says belongs in `useState`. Adding a router with one route, or a
 query client with no queries, would be scaffolding with nothing to do.
+
+## 2026-09-24 — No named volume for SQLite in docker-compose.yml
+
+**Decision:** `docker-compose.yml` does not mount a named volume for a
+SQLite database file. The PostgreSQL `db` service from the standard layout
+is included but commented out, per the contract.
+
+**Why:** The backend has no database engine configured at all right now
+(see the "game logic lives entirely in the frontend" decision above) — a
+volume for a file that's never created would just be dead configuration.
+It can be added the moment a real persisted resource shows up.

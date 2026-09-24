@@ -21,4 +21,24 @@ See [Documentation/](Documentation/) for the full assignment write-up.
 
 ## Running the project
 
-Setup instructions will be added here as each part comes online.
+**With Docker (closest to production):**
+
+```bash
+docker compose up --build
+```
+
+Then open <http://localhost:8080> to play. The backend health check is at
+<http://localhost:8000/api/v1/health>.
+
+**For local development (faster iteration, hot reload):**
+
+```bash
+# backend
+cd backend && uv run uvicorn app.main:app --reload
+
+# frontend, in another terminal
+cd frontend && pnpm install && pnpm dev
+```
+
+See `backend/README.md` and `frontend/README.md` for the full command list
+(tests, lint, type-check) for each side.

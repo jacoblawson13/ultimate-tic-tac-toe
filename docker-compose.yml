@@ -1,0 +1,49 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    ports:
+      - "8000:8000"
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')\""]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/frontend.Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Not needed yet: the backend has no persisted resources (see DECISIONS.md).
+  # Uncomment when a real database-backed feature is added.
+  # db:
+  #   image: postgres:17-alpine
+  #   environment:
+  #     POSTGRES_USER: app
+  #     POSTGRES_PASSWORD: app
+  #     POSTGRES_DB: app
+  #   volumes:
+  #     - db-data:/var/lib/postgresql/data
+  #   networks:
+  #     - app
+
+networks:
+  app:
+
+# volumes:
+#   db-data:
