@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import { LargeBoard } from './components/LargeBoard'
-import { applyMove, createInitialGameState, isSectionPlayable } from './game/gameLogic'
-
-function statusMessage(state: ReturnType<typeof createInitialGameState>): string {
-  if (state.overallWinner === 'tied') return "It's a tie!"
-  if (state.overallWinner !== null) return `Player ${state.overallWinner} wins!`
-  if (state.requiredSection === null) return `Player ${state.currentPlayer}'s turn — play anywhere`
-  return `Player ${state.currentPlayer}'s turn — play in section ${state.requiredSection + 1}`
-}
+import {
+  applyMove,
+  createInitialGameState,
+  getStatusMessage,
+  isSectionPlayable,
+} from './game/gameLogic'
 
 function App() {
   const [state, setState] = useState(createInitialGameState)
@@ -23,7 +21,7 @@ function App() {
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 p-8">
       <h1 className="text-2xl font-semibold">Ultimate Tic-Tac-Toe</h1>
-      <p className="text-lg">{statusMessage(state)}</p>
+      <p className="text-lg">{getStatusMessage(state)}</p>
       <LargeBoard state={state} onMove={handleMove} />
       <button
         type="button"

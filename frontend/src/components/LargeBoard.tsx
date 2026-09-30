@@ -16,6 +16,7 @@ export function LargeBoard({ state, onMove }: LargeBoardProps) {
       {state.boards.map((cells, section) => (
         <SmallBoard
           key={section}
+          section={section}
           cells={cells}
           result={state.boardResults[section]}
           isPlayable={

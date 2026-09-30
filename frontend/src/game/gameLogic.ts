@@ -76,6 +76,14 @@ export function isSectionPlayable(
   return section === requiredSection
 }
 
+/** The human-readable status line for the current game state. */
+export function getStatusMessage(state: GameState): string {
+  if (state.overallWinner === 'tied') return "It's a tie!"
+  if (state.overallWinner !== null) return `Player ${state.overallWinner} wins!`
+  if (state.requiredSection === null) return `Player ${state.currentPlayer}'s turn — play anywhere`
+  return `Player ${state.currentPlayer}'s turn — play in section ${state.requiredSection + 1}`
+}
+
 /** The starting state: nine empty boards, X goes first, any section is open. */
 export function createInitialGameState(): GameState {
   return {

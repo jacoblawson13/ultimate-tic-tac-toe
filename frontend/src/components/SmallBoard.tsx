@@ -2,6 +2,7 @@ import type { SmallBoardCells, SmallBoardResult } from '../game/types'
 import { Cell } from './Cell'
 
 interface SmallBoardProps {
+  section: number
   cells: SmallBoardCells
   result: SmallBoardResult
   isPlayable: boolean
@@ -9,9 +10,11 @@ interface SmallBoardProps {
 }
 
 /** One of the nine 3x3 boards that make up the large board. */
-export function SmallBoard({ cells, result, isPlayable, onCellClick }: SmallBoardProps) {
+export function SmallBoard({ section, cells, result, isPlayable, onCellClick }: SmallBoardProps) {
   return (
     <div
+      role="group"
+      aria-label={`Section ${section + 1}`}
       className={`grid grid-cols-3 gap-1 border-2 p-1 transition-colors ${
         isPlayable ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-white'
       }`}

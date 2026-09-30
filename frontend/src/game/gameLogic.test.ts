@@ -5,6 +5,7 @@ import {
   getNextRequiredSection,
   getOverallResult,
   getSmallBoardResult,
+  getStatusMessage,
   isSectionPlayable,
 } from './gameLogic'
 import type { CellValue, SmallBoardResult } from './types'
@@ -157,5 +158,36 @@ describe('applyMove', () => {
     const next = applyMove(state, 2, 2)
 
     expect(next.requiredSection).toBeNull()
+  })
+})
+
+describe('getStatusMessage', () => {
+  it('announces free choice when no section is required', () => {
+    const state = createInitialGameState()
+    expect(getStatusMessage(state)).toBe("Player X's turn — play anywhere")
+  })
+
+  it('announces the required section, using 1-based numbering for the player', () => {
+    const state = createInitialGameState()
+    state.requiredSection = 4
+    expect(getStatusMessage(state)).toBe("Player X's turn — play in section 5")
+  })
+
+  it('announces the other player after a turn switch', () => {
+    const state = createInitialGameState()
+    state.currentPlayer = 'O'
+    expect(getStatusMessage(state)).toBe("Player O's turn — play anywhere")
+  })
+
+  it('announces a winner once the game is decided', () => {
+    const state = createInitialGameState()
+    state.overallWinner = 'X'
+    expect(getStatusMessage(state)).toBe('Player X wins!')
+  })
+
+  it('announces a tie once the game is decided with no winner', () => {
+    const state = createInitialGameState()
+    state.overallWinner = 'tied'
+    expect(getStatusMessage(state)).toBe("It's a tie!")
   })
 })
