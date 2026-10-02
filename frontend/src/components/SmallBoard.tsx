@@ -21,7 +21,7 @@ export function SmallBoard({ section, cells, result, isPlayable, onCellClick }: 
     >
       {result !== null ? (
         <div
-          className="col-span-3 row-span-3 flex h-[126px] w-[126px] items-center justify-center
+          className="col-span-3 row-span-3 flex h-32 w-32 items-center justify-center
             text-4xl font-bold text-slate-400"
         >
           {result === 'tied' ? '—' : result}

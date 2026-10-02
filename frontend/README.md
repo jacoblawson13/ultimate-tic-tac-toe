@@ -19,7 +19,8 @@ pnpm install       # install dependencies
 pnpm dev           # start the dev server
 pnpm build         # type-check and build for production
 pnpm lint          # run ESLint
-pnpm format        # run Prettier
+pnpm format        # run Prettier (rewrites files)
+pnpm format:check  # check formatting without changing files (what CI runs)
 pnpm test          # run unit/component tests once
 pnpm test:cov      # run unit/component tests with coverage
 pnpm test:e2e      # run Playwright end-to-end tests (starts its own dev server)

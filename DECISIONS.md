@@ -101,3 +101,61 @@ layout, and added `.env.example` to both apps.
 Node 24, Corepack, Playwright, and the layout, and nothing here justified
 deviating. They were gaps from earlier work, caught by request during a
 full compliance audit, and corrected rather than left undocumented.
+
+## 2026-10-02 — Pin the project constitution as CLAUDE.md
+
+**Decision:** Copy `Documentation/Prompt_Boilerplate.txt` verbatim to
+`CLAUDE.md` at the repo root. The file in `Documentation/` stays as the
+original, unmodified assignment file.
+
+**Alternative considered:** Leave it only in `Documentation/` and paste it
+into each AI session by hand.
+
+**Why:** The constitution itself says to put it in a `CLAUDE.md` when the
+tool supports project-level instructions, so it can't scroll out of
+context. Claude Code loads a root-level `CLAUDE.md` automatically every
+session. (An earlier attempt on 2026-09-30 was undone along with an
+unrelated history revert; this restores it deliberately.)
+
+## 2026-10-02 — Second audit: fixes that weren't judgment calls
+
+**Decision:** A fresh-eyes bug audit found more places where the work had
+drifted from the contract or had real defects, all now fixed:
+
+- TypeScript was 6.0 (pulled in by the Vite template); the contract says 5.x,
+  so it is pinned to `~5.9`.
+- `tsconfig.node.json` lacked `strict: true` and never type-checked the
+  Playwright config or `e2e/`; it now does both.
+- Docker images ran Python 3.13 while everything was tested on 3.14; the
+  images now use 3.14 and `backend/.python-version` pins it for uv everywhere.
+  The frontend image now installs pnpm through Corepack like CI does.
+- The frontend CI job never checked formatting (the backend one does); it now
+  runs `prettier --check`, with a `.prettierignore` for generated files.
+- The API returned FastAPI's default `{"detail": "Not Found"}` for 404/405,
+  breaking the contract's `{code, detail}` error envelope. Handlers in
+  `app/api/v1/errors.py` fix this.
+- Playwright's `webServer` ran `pnpm dev`; pnpm 12 starts scripts in their own
+  process group, so Playwright could not stop vite afterwards and `pnpm
+  test:e2e` never exited (it would have hung the CI e2e job). It now runs
+  vite directly.
+- One unit test was named "sets the overall winner..." but asserted that no
+  winner was set; renamed to say what it checks.
+
+**Alternatives considered, deliberately not done:**
+
+- No handler for FastAPI's 422 validation errors yet. No endpoint accepts
+  input, so the handler could not be exercised by a meaningful test; it
+  should be added together with the first endpoint that takes a body or
+  query parameters.
+- The guard clauses at the top of `handleMove` in `App.tsx` repeat checks the
+  UI already enforces by disabling buttons, so no click can reach them in
+  normal use. They are kept as defense in depth against a future UI change
+  breaking the rules, at the cost of three lines coverage reports as
+  uncovered.
+
+**Why:** The contract is explicit on each item above, and the Playwright
+hang and unmatched error envelope were real defects rather than style
+preferences. Tests added alongside: component tests for `SmallBoard` and
+`LargeBoard`, full-game UI tests (an overall win and a tie, with move
+sequences produced by an independent reference implementation of the rules),
+edge cases in `gameLogic.test.ts`, and a seeded 300-game invariant test.

@@ -1,19 +1,22 @@
 # syntax=docker/dockerfile:1
 
 # ---- builder: install dependencies with uv into a virtualenv ----
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12 /uv /usr/local/bin/uv
+
+# Use the image's own Python rather than letting uv download another one.
+ENV UV_PYTHON_DOWNLOADS=never
 
 WORKDIR /app
-COPY backend/pyproject.toml backend/uv.lock ./
+COPY backend/pyproject.toml backend/uv.lock backend/.python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY backend/app ./app
 RUN uv sync --frozen --no-dev
 
 # ---- runtime: copy just the venv and app code, run as non-root ----
-FROM python:3.13-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 RUN useradd --create-home --uid 1000 appuser
 WORKDIR /app

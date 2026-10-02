@@ -3,11 +3,22 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import App from './App'
 
-/** Cells render in section order (0-8), 9 cells each, so this converts a
- * (section, cell) pair into the 1-based position React Testing Library
- * sees them in via getAllByRole. */
-function cellIndex(section: number, cell: number): number {
-  return section * 9 + cell
+/** A move is [section label 1-9, cell position 0-8], matching how the board reads on screen. */
+type Move = [section: number, cell: number]
+
+async function playMoves(user: ReturnType<typeof userEvent.setup>, moves: Move[]) {
+  for (const [section, cell] of moves) {
+    const group = screen.getByRole('group', { name: `Section ${section}` })
+    // Query every cell (marked or not) so positions stay fixed - filtering to
+    // only "Empty cell" would shift indices once a section has any marks.
+    await user.click(within(group).getAllByRole('button')[cell])
+  }
+}
+
+function overlayInSection(section: number) {
+  const group = screen.getByRole('group', { name: `Section ${section}` })
+  expect(within(group).queryAllByRole('button')).toHaveLength(0)
+  return group
 }
 
 describe('App', () => {
@@ -24,33 +35,44 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    // Play the top-left cell (index 0) of section 2 (top-right section).
-    const cells = screen.getAllByRole('button', { name: 'Empty cell' })
-    await user.click(cells[cellIndex(2, 0)])
+    // Top-left cell (0) of section 3 (top-right) sends O to section 1 (top-left).
+    await playMoves(user, [[3, 0]])
 
     expect(screen.getByText(/player o's turn — play in section 1/i)).toBeInTheDocument()
   })
 
-  it('prevents clicking a cell that is already marked', async () => {
+  it('ignores clicks on a cell that is already marked', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    const cells = screen.getAllByRole('button', { name: 'Empty cell' })
-    const target = cells[cellIndex(2, 0)]
-    await user.click(target)
+    await playMoves(user, [[3, 0]])
+    const marked = screen.getByRole('button', { name: 'Cell marked X' })
+    await user.click(marked)
 
-    expect(screen.getByRole('button', { name: 'Cell marked X' })).toBeDisabled()
-    // Still O's turn - clicking the occupied cell again must not be possible
-    // (it's no longer queryable as an empty cell at all).
-    expect(screen.queryAllByRole('button', { name: 'Empty cell' })).toHaveLength(80)
+    expect(marked).toBeDisabled()
+    expect(screen.getByText(/player o's turn — play in section 1/i)).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Cell marked/ })).toHaveLength(1)
+  })
+
+  it('does not let a player move outside the required section', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await playMoves(user, [[3, 0]]) // O must now play in section 1
+    const elsewhere = within(screen.getByRole('group', { name: 'Section 9' })).getAllByRole(
+      'button',
+    )[0]
+    await user.click(elsewhere)
+
+    expect(elsewhere).toBeDisabled()
+    expect(screen.getByText(/player o's turn — play in section 1/i)).toBeInTheDocument()
   })
 
   it('resets the board when New Game is clicked', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    const cells = screen.getAllByRole('button', { name: 'Empty cell' })
-    await user.click(cells[cellIndex(2, 0)])
+    await playMoves(user, [[3, 0]])
     await user.click(screen.getByRole('button', { name: 'New Game' }))
 
     expect(screen.getByText(/player x's turn — play anywhere/i)).toBeInTheDocument()
@@ -61,36 +83,126 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    // A verified 7-move sequence where X wins section 1 (top row: cells 0,1,2)
-    // by bouncing O through other sections via the cell-index routing rule.
-    // See DECISIONS.md / gameLogic tests for the routing rule itself; this
-    // test exists to prove the *UI* reacts correctly once a board is won.
-    const moves: [number, number][] = [
-      [1, 0], // X: section 1, cell 0
-      [1, 4], // O: section 1, cell 4
-      [5, 5], // X: section 5, cell 5
-      [6, 0], // O: section 6, cell 0
-      [1, 1], // X: section 1, cell 1
-      [2, 0], // O: section 2, cell 0
-      [1, 2], // X: section 1, cell 2 -> completes the top row, X wins section 1
-    ]
+    // X wins section 1 (top row) while O is bounced through other sections
+    // by the cell-position routing rule.
+    await playMoves(user, [
+      [1, 0], // X
+      [1, 4], // O
+      [5, 5], // X
+      [6, 0], // O
+      [1, 1], // X
+      [2, 0], // O
+      [1, 2], // X completes the top row of section 1
+    ])
 
-    for (const [section, cell] of moves) {
-      const group = screen.getByRole('group', { name: `Section ${section}` })
-      // Query every cell (marked or not) so the array stays in a fixed
-      // position order - filtering to only "Empty cell" would shift indices
-      // once a section has any marks in it.
-      const cells = within(group).getAllByRole('button')
-      await user.click(cells[cell])
-    }
-
-    // The won board no longer shows individual cells, just the winner mark.
-    const wonBoard = screen.getByRole('group', { name: 'Section 1' })
-    expect(within(wonBoard).getByText('X')).toBeInTheDocument()
-    expect(within(wonBoard).queryAllByRole('button')).toHaveLength(0)
-
-    // Cell 2 was the last move played, so the next required section is 3
-    // (0-indexed section 2), which is still open - not a free choice.
+    expect(within(overlayInSection(1)).getByText('X')).toBeInTheDocument()
+    // Cell 2 was the last move, so O must play in section 3, which is still open.
     expect(screen.getByText(/player o's turn — play in section 3/i)).toBeInTheDocument()
+  })
+
+  // The two full games below were generated by an independent reference
+  // implementation of the rules (not by this app's code), then replayed here
+  // through the real UI. If any click were refused as illegal, the final
+  // assertions would fail.
+  it('plays a full game through the UI to an overall win, including free-choice turns', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await playMoves(user, [
+      [5, 1],
+      [2, 4],
+      [5, 0],
+      [1, 2],
+      [3, 0],
+      [1, 4],
+      [5, 2],
+      [3, 6],
+      [7, 4],
+    ])
+    // Move 9 (cell 4) points at section 5, which X already won on moves 1-5,
+    // so there is nothing to play there and O gets a free choice.
+    expect(screen.getByText(/player o's turn — play anywhere/i)).toBeInTheDocument()
+
+    await playMoves(user, [
+      [1, 6],
+      [7, 3],
+      [4, 2],
+      [3, 4],
+      [9, 3],
+      [4, 7],
+      [8, 1],
+      [2, 1],
+      [2, 6],
+      [7, 5],
+      [6, 2],
+      [3, 8],
+    ])
+
+    expect(screen.getByText('Player X wins!')).toBeInTheDocument()
+    expect(within(overlayInSection(1)).getByText('O')).toBeInTheDocument()
+    // X won the diagonal of sections 3, 5 and 7.
+    for (const winningSection of [3, 5, 7]) {
+      expect(within(overlayInSection(winningSection)).getByText('X')).toBeInTheDocument()
+    }
+    // Once the game is over, no cell anywhere can be played.
+    screen.getAllByRole('button', { name: /cell/i }).forEach((cell) => expect(cell).toBeDisabled())
+
+    await user.click(screen.getByRole('button', { name: 'New Game' }))
+    expect(screen.getByText(/player x's turn — play anywhere/i)).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Empty cell' })).toHaveLength(81)
+  })
+
+  it('plays a full game through the UI to a tie', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await playMoves(user, [
+      [3, 3],
+      [4, 2],
+      [3, 5],
+      [6, 8],
+      [9, 1],
+      [2, 5],
+      [6, 6],
+      [7, 1],
+      [2, 6],
+      [7, 2],
+      [3, 4],
+      [5, 7],
+      [8, 0],
+      [1, 3],
+      [4, 6],
+      [7, 0],
+      [1, 8],
+      [9, 6],
+      [1, 4],
+      [5, 6],
+      [4, 8],
+      [9, 2],
+      [1, 0],
+      [5, 8],
+      [9, 8],
+      [9, 4],
+      [8, 5],
+      [6, 7],
+      [8, 8],
+      [6, 5],
+      [6, 1],
+      [2, 4],
+      [4, 7],
+      [8, 7],
+      [8, 1],
+      [2, 3],
+      [8, 2],
+      [6, 2],
+    ])
+
+    expect(screen.getByText("It's a tie!")).toBeInTheDocument()
+    // Every section was won (none tied), in a pattern with no line of three.
+    const expectedWinners = ['X', 'O', 'X', 'X', 'O', 'O', 'O', 'X', 'O']
+    expectedWinners.forEach((winner, index) => {
+      expect(within(overlayInSection(index + 1)).getByText(winner)).toBeInTheDocument()
+    })
+    expect(screen.queryAllByRole('button', { name: /cell/i })).toHaveLength(0)
   })
 })

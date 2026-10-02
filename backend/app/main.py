@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.v1.errors import register_exception_handlers
 from app.api.v1.health import router as health_router
 from app.core.settings import get_settings
 
@@ -14,4 +15,5 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title=get_settings().app_name, lifespan=lifespan)
+register_exception_handlers(app)
 app.include_router(health_router, prefix="/api/v1")

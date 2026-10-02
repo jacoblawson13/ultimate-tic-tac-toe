@@ -3,7 +3,7 @@
 # ---- builder: install dependencies and build the static site ----
 FROM node:24-slim AS builder
 
-RUN npm install --global pnpm
+RUN corepack enable
 
 WORKDIR /app
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
